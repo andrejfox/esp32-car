@@ -36,16 +36,16 @@ void connectToWiFi() {
 void connectToMQTT() {
     while (!mqtt_client.connected()) {
         String client_id = "esp32-client-" + String(WiFi.macAddress());
-        Serial.printf("Connecting to MQTT Broker as %s\n", client_id.c_str());
+        Serial.printf("Connecting to Broker as [%s]\n", client_id.c_str());
         if (mqtt_client.connect(client_id.c_str(), mqtt_username, mqtt_password)) {
-            Serial.print("Connected to MQTT broker: ");
+            Serial.print("Connected to: ");
             Serial.println(mqtt_broker);
             Serial.print("Username: ");
             Serial.println(mqtt_username);
             Serial.print("Password: ");
             Serial.println(mqtt_password);
             mqtt_client.subscribe(mqtt_topic);
-            Serial.print("Subscribed topic: ");
+            Serial.print("Topic: ");
             Serial.println(mqtt_topic);
             Serial.println();
         } else {
@@ -74,17 +74,9 @@ void mqttCallback(char *topic, byte *payload, unsigned int length) {
     }
 }
 
-int readDebounced(int pin) {
-    int reading = digitalRead(pin);
-    delay(50); 
-    if (reading == digitalRead(pin)) {
-        return reading;
-    }
-    return -1; 
-}
-
 void setup() {
     Serial.begin(921600);
+    Serial.println("\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n");
 
     connectToWiFi();
     mqtt_client.setServer(mqtt_broker, mqtt_port);
