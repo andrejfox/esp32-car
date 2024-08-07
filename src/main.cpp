@@ -8,7 +8,7 @@ const char *password = "skratek2";     // Replace with your WiFi password
 
 // MQTT Broker settings
 const char *mqtt_broker = "213.172.234.74";
-const char *mqtt_topic = "esp/test";
+const char *mqtt_topic = "esp/marcel";
 const char *mqtt_username = "pp";
 const char *mqtt_password = "pp";
 const int mqtt_port = 1883;
