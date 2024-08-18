@@ -2,6 +2,13 @@
 #include <WiFi.h>
 #include <PubSubClient.h>
 
+const int motorAL = 15;
+const int motorAR = 16;
+const int motorBL = 17;
+const int motorBR = 18;
+
+const int speeeeed = 50; //0 - 255
+
 // WiFi credentials
 const char *ssid = "kabum2";             // Replace with your WiFi name
 const char *password = "skratek2";     // Replace with your WiFi password
@@ -67,14 +74,35 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
     Serial.print(": ");
     Serial.println(message);
 
-    if (message == "on") {
-        digitalWrite(LED_BUILTIN, HIGH);
-    } else if (message == "off") {
-        digitalWrite(LED_BUILTIN, LOW);
+    if (message == "naprej") {
+        analogWrite(motorAL, speeeeed);
+        analogWrite(motorAR, 0);
+        analogWrite(motorBL, speeeeed);
+        analogWrite(motorBR, 0);
+        delay(1000);
+        analogWrite(motorAL, 0);
+        analogWrite(motorAR, 0);
+        analogWrite(motorBL, 0);
+        analogWrite(motorBR, 0);
+    } else if (message == "nazaj") {
+        analogWrite(motorAL, 0);
+        analogWrite(motorAR, speeeeed);
+        analogWrite(motorBL, 0);
+        analogWrite(motorBR, speeeeed);
+        delay(1000);
+        analogWrite(motorAL, 0);
+        analogWrite(motorAR, 0);
+        analogWrite(motorBL, 0);
+        analogWrite(motorBR, 0);
     }
 }
 
 void setup() {
+    pinMode(motorAL, OUTPUT);
+    pinMode(motorAR, OUTPUT);
+    pinMode(motorBL, OUTPUT);
+    pinMode(motorBR, OUTPUT);
+
     Serial.begin(921600);
     Serial.println("\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n");
 
