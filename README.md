@@ -1,7 +1,7 @@
 # Pozor roboti na cesti!
 
 ## Opis projekta
-Ta projekt predstavlja nadzor avtomobila, ki temelji na ESP32. Uporablja se za učenje in eksperimentiranje z IoT tehnologijami ter programiranjem v okolju ESP-IDF.
+Ta projekt predstavlja nadzor avtomobila, ki temelji na ESP32. Uporablja se za učenje in eksperimentiranje z IoT tehnologijami.
 
 ## Zahteve
 Pred začetkom dela na projektu potrebujete naslednje:
