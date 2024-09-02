@@ -6,7 +6,7 @@ Ta projekt predstavlja nadzor avtomobila, ki temelji na ESP32. Uporablja se za u
 ## Zahteve
 Pred začetkom dela na projektu potrebujete naslednje:
 
-- ESP32 razvojna plošča
+- Avtoček, ki smo ga izdelali na seriji delavnic
 - Računalnik z nameščenim operacijskim sistemom Windows, macOS ali Linux
 - Visual Studio Code (VSCode)
 
