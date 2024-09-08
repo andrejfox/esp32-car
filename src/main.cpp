@@ -200,7 +200,7 @@ void pinSetup() { // pine nastavimo na OUTPUT / INPUT
 }
 
 void setup() {
-    Serial.begin(921600);
+    Serial.begin(9600);
     for(int i = 0; i <= 20; i++) Serial.println("\n");
 
     connectToWiFi();
