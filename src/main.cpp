@@ -3,11 +3,11 @@
 #include <PubSubClient.h>
 
 // WiFi nastavitve
-const char *ssid = "zavod404"; // Ime WiFi-ja
-const char *password = "zavod404"; // Geslo WiFi-ja
+const char *ssid = ""; // Ime WiFi-ja
+const char *password = ""; // Geslo WiFi-ja
 
 // MQTT Broker nastavitve
-const char *mqtt_broker = "213.172.234.74"; // naslov / IP
+const char *mqtt_broker = "0.0.0.0"; // naslov / IP
 const char *mqtt_topic = "esp/test";
 const char *mqtt_username = "pp"; 
 const char *mqtt_password = "pp";
