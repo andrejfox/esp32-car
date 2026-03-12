@@ -1,223 +1,125 @@
 #include <Arduino.h>
 #include <WiFi.h>
 #include <PubSubClient.h>
+#include <esp_sleep.h>
 
-// WiFi nastavitve
-const char *ssid = ""; // Ime WiFi-ja
-const char *password = ""; // Geslo WiFi-ja
+const char *ssid = "kersnikova-office";
+const char *password = "2015kersnikovaOFFICE03";
 
-// MQTT Broker nastavitve
-const char *mqtt_broker = "0.0.0.0"; // naslov / IP
-const char *mqtt_topic = "esp/test";
-const char *mqtt_username = "pp"; 
-const char *mqtt_password = "pp";
+const char *mqtt_broker = "192.168.200.144";
 const int mqtt_port = 1883;
+const char *mqtt_topic = "a/test";
 
-// pini
-int motorL_1 = 15;
-int motorL_2 = 16;
-int motorD_1 = 17;
-int motorD_2 = 18;
-int trigPin = 4;
-int echoPin = 5;
-int lucka = 9;
+const uint64_t sleep_seconds = 20;
 
-// globalne spremenlivke
-int hitrost = 200;
-float duration, distance;
-bool automatic_mode = false;
+const int led_pin_r = 37;
 
-// WiFi and MQTT client inicializacija
+const int pwm_channel = 0;
+const int pwm_freq = 5000;
+const int pwm_res = 10;
+const int pwm_pin = 7;
+const int pwm_read_pin = 15;
+const int moisture_min = 1500;
+const int moisture_max = 500;
+
+// Persists across deep sleep cycles
+RTC_DATA_ATTR uint64_t uptime_seconds = 0;
+
 WiFiClient esp_client;
 PubSubClient mqtt_client(esp_client);
 
-void naprej() {
-    analogWrite(motorD_1, hitrost);
-    analogWrite(motorD_2, LOW);
-    analogWrite(motorL_1, LOW);
-    analogWrite(motorL_2, hitrost);
+int readMoistureRaw() {
+    ledcWrite(pwm_channel, 1);
+    delay(10);
+    return analogRead(pwm_read_pin);
 }
 
-void nazaj() {
-    analogWrite(motorD_1, LOW);
-    analogWrite(motorD_2, hitrost);
-    analogWrite(motorL_1, hitrost);
-    analogWrite(motorL_2, LOW);
-}
+void connectToWiFi() {
+    if (WiFi.status() == WL_CONNECTED) return;
 
-void stop() {
-    analogWrite(motorD_1, LOW);
-    analogWrite(motorD_2, LOW);
-    analogWrite(motorL_1, LOW);
-    analogWrite(motorL_2, LOW);
-}
-
-void levi_nazaj() {
-    analogWrite(motorD_1, LOW);
-    analogWrite(motorD_2, hitrost);
-    analogWrite(motorL_1, LOW);
-    analogWrite(motorL_2, LOW);
-}
-
-void levi_naprej() {
-    analogWrite(motorD_1, hitrost);
-    analogWrite(motorD_2, LOW);
-    analogWrite(motorL_1, LOW);
-    analogWrite(motorL_2, LOW);
-}
-
-void desni_nazaj() {
-    analogWrite(motorD_1, LOW);
-    analogWrite(motorD_2, LOW);
-    analogWrite(motorL_1, hitrost);
-    analogWrite(motorL_2, LOW);
-}
-
-void desni_naprej() {
-    analogWrite(motorD_1, LOW);
-    analogWrite(motorD_2, LOW);
-    analogWrite(motorL_1, LOW);
-    analogWrite(motorL_2, hitrost);
-}
-
-void obrni_levo(int cas_obracanja) {
-    analogWrite(motorD_1, LOW);
-    analogWrite(motorD_2, hitrost);
-    analogWrite(motorL_1, LOW);
-    analogWrite(motorL_2, hitrost);
-    delay(cas_obracanja);
-}
-
-void obrni_desno(int cas_obracanja) {
-    analogWrite(motorD_1, hitrost);
-    analogWrite(motorD_2, LOW);
-    analogWrite(motorL_1, hitrost);
-    analogWrite(motorL_2, LOW);
-    delay(cas_obracanja);
-}
-
-void automatic() { // Automatsko premikanje
-    do {
-        digitalWrite(trigPin, LOW);
-        delayMicroseconds(2);
-        digitalWrite(trigPin, HIGH);
-        delayMicroseconds(10);
-        digitalWrite(trigPin, LOW);
-
-        duration = pulseIn(echoPin, HIGH);
-        distance = (duration * 0.0343) / 2;
-        Serial.print("Distance: ");
-        Serial.println(distance);
-        delay(100);
-
-        if (distance < 10) {
-            nazaj();
-            delay(500);
-            obrni_levo(1000);
-        } else {
-            naprej();
-        }
-        mqtt_client.loop();
-    } while (automatic_mode == true);
-}
-
-void connectToWiFi() { // Povezovanje z internetom
+    Serial.println("Connecting to WiFi...");
     WiFi.begin(ssid, password);
-    Serial.println();
-    Serial.println("Connecting to WiFi");
-    Serial.print("SSID: ");
-    Serial.println(ssid);
-    Serial.print("Password: ");
-    Serial.println(password);
+
     while (WiFi.status() != WL_CONNECTED) {
-        delay(50);
+        delay(500);
         Serial.print(".");
     }
-    Serial.println("\nConnected to WiFi\n");
+
+    Serial.println();
+    Serial.print("WiFi connected, IP: ");
+    Serial.println(WiFi.localIP());
 }
 
-void connectToMQTT() { // povezovanje z MQTT brockerjem
+void connectToMQTT() {
     while (!mqtt_client.connected()) {
         String client_id = "esp32-client-" + String(WiFi.macAddress());
-        Serial.printf("Connecting to Broker as [%s]\n", client_id.c_str());
-        if (mqtt_client.connect(client_id.c_str(), mqtt_username, mqtt_password)) {
-            Serial.print("Connected to: ");
-            Serial.println(mqtt_broker);
-            Serial.print("Username: ");
-            Serial.println(mqtt_username);
-            Serial.print("Password: ");
-            Serial.println(mqtt_password);
-            mqtt_client.subscribe(mqtt_topic);
-            Serial.print("Topic: ");
-            Serial.println(mqtt_topic);
-            Serial.println();
+        Serial.print("Connecting to MQTT broker...");
+
+        if (mqtt_client.connect(client_id.c_str())) {
+            Serial.println(" connected");
         } else {
-            Serial.print("Failed to connect to MQTT broker, rc=");
+            Serial.print(" failed, rc=");
             Serial.print(mqtt_client.state());
-            Serial.println(" Retrying in 5 seconds.");
-            delay(5000);
+            Serial.println(" (retry in 3s)");
+            delay(3000);
         }
     }
-}
-
-void mqttCallback(char *topic, byte *payload, unsigned int length) {
-    String message = "";
-    for (int i = 0; i < length; i++) { // Sestavimo spozočilo
-        message += (char)payload[i];
-    }
-
-    Serial.print(topic);
-    Serial.print(": ");
-    Serial.println(message);
-
-    if (message == "naprej") { // Preverimo kaj je sporočilo
-        automatic_mode = false;
-        Serial.println("naprej");
-        naprej();
-    } else if (message == "nazaj") {
-        automatic_mode = false;
-        nazaj();
-    } else if (message == "stop") {
-        automatic_mode = false;
-        stop();
-    } else if (message == "obrni") {
-        automatic_mode = false;
-        obrni_desno(500);
-    } else if (message == "auto") {
-        automatic_mode = true;
-        automatic();
-    }
-}
-
-void pinSetup() { // pine nastavimo na OUTPUT / INPUT
-    pinMode(motorD_1, OUTPUT);
-    pinMode(motorD_2, OUTPUT);
-    pinMode(motorL_1, OUTPUT);
-    pinMode(motorL_2, OUTPUT);
-    pinMode(trigPin, OUTPUT);
-    pinMode(echoPin, INPUT);
-    pinMode(lucka, OUTPUT);
 }
 
 void setup() {
-    Serial.begin(9600);
-    for(int i = 0; i <= 20; i++) Serial.println("\n");
+    Serial.begin(115200);
+    delay(200);
+    const uint32_t cycle_start_ms = millis();
+
+    // Red LED on while active
+    pinMode(led_pin_r, OUTPUT);
+    digitalWrite(led_pin_r, HIGH);
+
+    // Moisture sensor PWM setup
+    ledcSetup(pwm_channel, pwm_freq, pwm_res);
+    ledcAttachPin(pwm_pin, pwm_channel);
+
+    Serial.print("Booting... uptime: ");
+    Serial.print(uptime_seconds);
+    Serial.println("s");
 
     connectToWiFi();
     mqtt_client.setServer(mqtt_broker, mqtt_port);
-    mqtt_client.setCallback(mqttCallback);
     connectToMQTT();
 
-    pinSetup();
+    const int moisture_raw = readMoistureRaw();
+    const int moisture_percent = constrain(map(moisture_raw, moisture_min, moisture_max, 0, 100), 0, 100);
+    const uint32_t cycle_ms = millis() - cycle_start_ms;
+
+    String payload = "{\n\"cycle_ms\":" + String(cycle_ms)
+                   + ",\n\"uptime_s\":" + String(uptime_seconds)
+                   + ",\n\"moisture_raw\":" + String(moisture_raw)
+                   + ",\n\"moisture_percent\":" + String(moisture_percent)
+                   + "\n}";
+    const bool sent = mqtt_client.publish(mqtt_topic, payload.c_str());
+
+    Serial.print("Publish: ");
+    Serial.print(payload);
+    Serial.print(" -> ");
+    Serial.println(sent ? "OK" : "FAILED");
+
+    mqtt_client.loop();
+    delay(200);
+
+    uptime_seconds += sleep_seconds;
+
+    // Red LED off before sleep
+    digitalWrite(led_pin_r, LOW);
+
+    Serial.print("Deep sleeping for ");
+    Serial.print(sleep_seconds);
+    Serial.println("s...");
+    Serial.flush();
+
+    esp_sleep_enable_timer_wakeup(sleep_seconds * 1000000ULL);
+    esp_deep_sleep_start();
 }
 
 void loop() {
-    digitalWrite(lucka, HIGH);
-
-    if (!mqtt_client.connected()) {
-        connectToMQTT();
-        Serial.println("connecting");
-    }
-    
-    mqtt_client.loop();
+    // Not used: deep sleep restarts setup() on wake
 }
